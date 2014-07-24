@@ -1,0 +1,158 @@
+
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title></title>
+		<meta charset="utf-8">
+	</head>
+	<!-- <script type="text/javascript" src="scripts/lib/three.min.js"></script> -->
+	<script type="text/javascript" src="scripts/lib/keyboard.js"></script>
+	<script type="text/javascript" src="scripts/game/main.js"></script>
+	<body onkeydown="keyDown(event)" onkeyup="keyUp(event)"></body>
+	<canvas id="graphics" width=600 height = 600 style="
+	position:absolute; top:0; left:0; background-color:#e3e3e3;"></canvas>
+
+	<script>
+		//VARIABLES
+		var gameCanvas = document.getElementById('graphics');
+		var grafx = gameCanvas.getContext('2d');
+		//PLAYER
+		var player = new Object('assets/walk1.png',300 - 16,0,31,42);
+
+		//LEVEL
+		var maxBlock = 11;
+		var blocks = new Array();
+		for (var i = 0; i <= 4; i++){
+			blocks[i] =  new Object('assets/block.png',i*50,300,50,50);
+		}
+
+		for (var i = 5; i <= 6; i++){
+			blocks[i] =  new Object('assets/block.png',i*50 + 50,300 + 100,50,50);
+		}
+
+		for (var i = 7; i <= maxBlock; i++){
+			blocks[i] =  new Object('assets/block.png',i*50 + 50,300 - 100,50,50);
+		}
+		//ENVIRONMENT
+		var clouds = new Array();
+		var maxClouds = 4;
+		for (var i = 0; i <= maxClouds; i++) {
+			clouds[i] = new Object('assets/cloud.png', i*118 + i*10 + 25, i%2 * 150 + 15, 118,87);
+		};
+
+
+		//PHYSICS
+		var isLeft = false;
+		var isRight = false;
+
+		var cloudUp = false;
+		var cloudDown = false;
+
+		var isSpace = false;
+		var actualGravity = 20;
+		player.Gravity = actualGravity;
+		player.Weight = 0.1;
+
+		//EVENTS
+		function keyDown(e) {
+			if(String.fromCharCode(e.keyCode) == "%") isLeft = true;
+			if(String.fromCharCode(e.keyCode) == "'") isRight = true;
+			if(String.fromCharCode(e.keyCode) == " " || String.fromCharCode(e.keyCode) == "&") isSpace = true;
+			console.log();
+		}
+
+		function keyUp(e) {
+			if(String.fromCharCode(e.keyCode) == "%") isLeft = false;
+			if(String.fromCharCode(e.keyCode) == "'") isRight = false;
+			if(String.fromCharCode(e.keyCode) == " " || String.fromCharCode(e.keyCode) == "&") isSpace = false;
+		}
+
+		//MAIN LOOP
+		MainLoop();
+		function MainLoop() {
+			//PRE VARIABLE ADJUSTMENTS
+			for (var i = 0; i <= maxBlock; i++) {
+				blocks[i].X += -player.Velocity_X;
+			};
+			for (var i = 0; i <= maxClouds; i++) {
+				clouds[i].X += -player.Velocity_X/10;
+			};
+			// player.X += player.Velocity_X;
+			player.Y += player.Velocity_Y;
+			//LOGIC
+			//checks velocity direction based on a keydown.  If there is no keydown it sets the velocity to 0 (no movement)
+			if (isLeft) player.Velocity_X = -3;
+			if (isRight) player.Velocity_X = 3;
+			if (!isLeft && !isRight && player.Velocity_Y == 0 ) player.Velocity_X = 0;
+			//when falling adds your weight to your velocity until your velocity is equal to gravity.
+			if (player.Velocity_Y < player.Gravity) player.Velocity_Y += player.Weight;
+
+			if (clouds[0].Y > 30) cloudUp = true;
+			if (clouds[0].Y < 2) cloudUp = false;
+
+			//loop through the blocks and check if the player is colliding with any block in blocks array.
+			//and also check if the player's y location + their height is less than any block's y location.
+			//if player's y is set to the block's y - the player's height and Velocity is set to 0 and Gravity set back to 20;
+			for (var i = 0; i <= maxBlock; i++) {
+				if (player.isColliding(blocks[i]) && player.Y + player.Height < blocks[i].Y + player.Velocity_Y) {
+					player.Y = blocks[i].Y - player.Height;
+					player.Velocity_Y = 0;
+					player.Gravity = actualGravity;
+				}
+			};
+			
+			if (isSpace && player.Velocity_Y == 0) {
+				player.Velocity_Y = -5;
+			}
+
+			if (player.Y > 600) { 
+					player.Y = -50;
+					player.Gravity += 4;
+				}
+			if (player.X > 600) player.X = -50;
+			if (player.Y > 600) player.Y = -50;
+			//POST VARIABLE ADJUSTMENTS
+
+			//RENDERING
+			grafx.clearRect(0,0,gameCanvas.width, gameCanvas.height);
+			for (var i = 0; i <= maxClouds; i++) {
+				if(!cloudUp) grafx.drawImage(clouds[i].Sprite, clouds[i].X, clouds[i].Y += .2);
+				if(cloudUp) grafx.drawImage(clouds[i].Sprite, clouds[i].X, clouds[i].Y -= .2);
+			};
+
+			for (var i = 0; i <= maxBlock; i++) {
+				grafx.drawImage(blocks[i].Sprite, blocks[i].X, blocks[i].Y);
+			};
+			grafx.drawImage(player.Sprite, player.X, player.Y);
+
+			setTimeout(MainLoop, 1000/60);
+		}
+
+		function Object(img,x,y,width,height) {
+			this.Sprite = new Image();
+			this.Sprite.src = img;
+			this.X = x;
+			this.Y = y;
+			this.Width = width;
+			this.Height = height;
+
+			this.Gravity;
+			this.Weight;
+
+			this.Previous_X;
+			this.Previous_Y;
+			this.Velocity_X = 0;
+			this.Velocity_Y = 0;
+
+			this.isColliding = function(obj) {
+				if(this.X > obj.X + obj.Width) 	 return false;
+				if(this.X + this.Width < obj.X)  return false;
+				if(this.Y > obj.Y + obj.Height)	 return false;
+				if(this.Y + this.Height < obj.Y ) return false;
+
+				return true;
+			}
+		}
+
+	</script>
+</html>
